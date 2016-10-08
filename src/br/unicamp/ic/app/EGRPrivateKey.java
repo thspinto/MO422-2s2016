@@ -1,9 +1,10 @@
 package br.unicamp.ic.app;
 
+import java.io.Serializable;
 import java.math.BigInteger;
-import java.security.PublicKey;
+import java.security.PrivateKey;
 
-public class EGRPublicKey implements PublicKey {
+public class EGRPrivateKey implements PrivateKey, Serializable {
 
   /**
    *  p and q are the two distinct primes p ≡ q ≡ 3 (mod 4)
@@ -15,6 +16,16 @@ public class EGRPublicKey implements PublicKey {
    * r is a random prime different from p and q.
    */
   private BigInteger a;
+
+  /**
+   * r is a random prime different from p and q (from the private key).
+   */
+  private BigInteger r;
+
+  /**
+   * g is a primitive root for Fp
+   */
+  private BigInteger g;
 
   public String getAlgorithm() {
     return "EGR";
@@ -50,6 +61,22 @@ public class EGRPublicKey implements PublicKey {
 
   public void setA(BigInteger a) {
     this.a = a;
+  }
+
+  public BigInteger getR() {
+    return r;
+  }
+
+  public void setR(BigInteger r) {
+    this.r = r;
+  }
+
+  public BigInteger getG() {
+    return g;
+  }
+
+  public void setG(BigInteger g) {
+    this.g = g;
   }
 }
 

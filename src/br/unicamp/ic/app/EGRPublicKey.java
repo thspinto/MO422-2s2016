@@ -2,10 +2,9 @@ package br.unicamp.ic.app;
 
 import java.io.Serializable;
 import java.math.BigInteger;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 
-public class EGRPrivateKey implements PrivateKey, Serializable {
+public class EGRPublicKey implements PublicKey, Serializable {
   /**
    * N p * q (from the private key)
    */
@@ -17,13 +16,12 @@ public class EGRPrivateKey implements PrivateKey, Serializable {
   private BigInteger r;
 
   /**
-   * Alpha is a primitive root for Fp
+   * g is a primitive root for Fp
    */
-  private BigInteger alpha;
-
+  private BigInteger g;
 
   /**
-   * Gamma is alpha^a mod r, where a is a random integer in [1, r-2]
+   * Gamma is g^a mod r, where a is a random integer in [1, r-2]
    */
   private BigInteger gamma;
 
@@ -55,12 +53,12 @@ public class EGRPrivateKey implements PrivateKey, Serializable {
     this.r = r;
   }
 
-  public BigInteger getAlpha() {
-    return alpha;
+  public BigInteger getG() {
+    return g;
   }
 
-  public void setAlpha(BigInteger alpha) {
-    this.alpha = alpha;
+  public void setG(BigInteger g) {
+    this.g = g;
   }
 
   public BigInteger getGamma() {
