@@ -4,20 +4,24 @@ import javax.crypto.interfaces.DHPrivateKey;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 
 public class EGRKeyPairGenerator extends KeyPairGenerator {
+  private SecureRandom random;
+  private int bitLength;
   private static BigInteger THREE = BigInteger.valueOf(3);
   private static BigInteger FOUR = BigInteger.valueOf(4);
 
   /**
    * Creates a KeyPairGenerator for ElGamalRabin algorithm.
    */
-  protected EGRKeyPairGenerator() {
-    super("EGR");
+  public EGRKeyPairGenerator() {
+    super(Properties.name);
+  }
+
+  public void initialize(int bitLength, SecureRandom random) {
+    this.random = random;
+    this.bitLength = bitLength;
   }
 
   public KeyPair generateKeyPair() {
@@ -27,6 +31,7 @@ public class EGRKeyPairGenerator extends KeyPairGenerator {
     //Rabin private key
     privateKey.setP(getBlumPrime());
     privateKey.setQ(getBlumPrime());
+
     //Rabin public key p * q
     publicKey.setN(privateKey.getP().multiply(privateKey.getQ()));
 
@@ -34,23 +39,26 @@ public class EGRKeyPairGenerator extends KeyPairGenerator {
     KeyPairGenerator kpg = null;
     try {
       kpg = KeyPairGenerator.getInstance("DH");
+      kpg.initialize(2048, random);
     } catch (NoSuchAlgorithmException e) {
       e.printStackTrace();
     }
-    kpg.initialize(Properties.bitLength, new SecureRandom());
-    KeyPair dhkp = kpg.generateKeyPair();
 
+    //Generate diffie-hellman keys
+    KeyPair dhkp = kpg.generateKeyPair();
     DHParameterSpec dhParams =  ((DHPrivateKey) dhkp.getPrivate()).getParams();
+
+    //Save private
     privateKey.setA(((DHPrivateKey) dhkp.getPrivate()).getX());
     privateKey.setR(dhParams.getP());
     privateKey.setG(dhParams.getG());
 
+    //Save public
     publicKey.setGamma(((DHPublicKey) dhkp.getPublic()).getY());
     publicKey.setR(privateKey.getR());
     publicKey.setG(privateKey.getG());
 
-    KeyPair kp = new KeyPair(publicKey, privateKey);
-    return kp;
+    return new KeyPair(publicKey, privateKey);
   }
 
   /**
@@ -61,7 +69,7 @@ public class EGRKeyPairGenerator extends KeyPairGenerator {
   private BigInteger getBlumPrime() {
     BigInteger blumPrimeCandidate;
     do {
-      blumPrimeCandidate = BigInteger.probablePrime(Properties.bitLength / 2, new SecureRandom());
+      blumPrimeCandidate = BigInteger.probablePrime(bitLength / 2, random);
     }
     while (!blumPrimeCandidate.mod(FOUR).equals(THREE));
     return blumPrimeCandidate;

@@ -28,11 +28,11 @@ public class EGRPrivateKey implements PrivateKey, Serializable {
   private BigInteger g;
 
   public String getAlgorithm() {
-    return "EGR";
+    return Properties.name;
   }
 
   public String getFormat() {
-    return "ElGamal Rabin Algorithm";
+    return "";
   }
 
   public byte[] getEncoded() {

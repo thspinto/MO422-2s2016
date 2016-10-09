@@ -26,11 +26,11 @@ public class EGRPublicKey implements PublicKey, Serializable {
   private BigInteger gamma;
 
   public String getAlgorithm() {
-    return "EGR";
+    return Properties.name;
   }
 
   public String getFormat() {
-    return "ElGamal Rabin Algorithm";
+    return "";
   }
 
   public byte[] getEncoded() {
