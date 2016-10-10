@@ -1,10 +1,14 @@
 package br.unicamp.ic.app;
 
+import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+
 import javax.crypto.interfaces.DHPrivateKey;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
-import java.math.BigInteger;
-import java.security.*;
 
 public class EGRKeyPairGenerator extends KeyPairGenerator {
   private SecureRandom random;
@@ -34,19 +38,25 @@ public class EGRKeyPairGenerator extends KeyPairGenerator {
 
     //Rabin public key p * q
     publicKey.setN(privateKey.getP().multiply(privateKey.getQ()));
+    privateKey.setN(publicKey.getN());
+
+    //Calculate the extended GDC parameters
+    BigInteger[] ext = extended_gcd(privateKey.getP(), privateKey.getQ());
+    privateKey.setX(ext[1]);
+    privateKey.setY(ext[2]);
 
     //Diffie-Hellman key exchange (Using ElGamal's idea)
     KeyPairGenerator kpg = null;
     try {
       kpg = KeyPairGenerator.getInstance("DH");
-      kpg.initialize(2048, random);
+      kpg.initialize(512, random);
     } catch (NoSuchAlgorithmException e) {
       e.printStackTrace();
     }
 
     //Generate diffie-hellman keys
     KeyPair dhkp = kpg.generateKeyPair();
-    DHParameterSpec dhParams =  ((DHPrivateKey) dhkp.getPrivate()).getParams();
+    DHParameterSpec dhParams = ((DHPrivateKey) dhkp.getPrivate()).getParams();
 
     //Save private
     privateKey.setA(((DHPrivateKey) dhkp.getPrivate()).getX());
@@ -62,7 +72,7 @@ public class EGRKeyPairGenerator extends KeyPairGenerator {
   }
 
   /**
-   * Generates a random prime such that p ≡ 3 (mod 4)
+   * Generates a random prime such that p ≡ 3 (mod 4).
    *
    * @return a random blum prime
    */
@@ -70,8 +80,36 @@ public class EGRKeyPairGenerator extends KeyPairGenerator {
     BigInteger blumPrimeCandidate;
     do {
       blumPrimeCandidate = BigInteger.probablePrime(bitLength / 2, random);
-    }
-    while (!blumPrimeCandidate.mod(FOUR).equals(THREE));
+    } while (!blumPrimeCandidate.mod(FOUR).equals(THREE));
     return blumPrimeCandidate;
+  }
+
+  /**
+   * Calculates the extended GDC of a and b.
+   *
+   * @param a any BigInteger
+   * @param b any BigInteger
+   * @return BigInteger vector {d, x, y} such that ax + by = d
+   */
+  public static BigInteger[] extended_gcd(BigInteger a, BigInteger b) {
+    BigInteger x1 = BigInteger.ZERO;
+    BigInteger x2 = BigInteger.ONE;
+    BigInteger y1 = BigInteger.ONE;
+    BigInteger y2 = BigInteger.ZERO;
+    while (!b.equals(BigInteger.ZERO)) {
+      BigInteger[] qr = a.divideAndRemainder(b);
+      BigInteger q = qr[0];
+
+      BigInteger x = x2.subtract(q.multiply(x1));
+      BigInteger y = y2.subtract(q.multiply(y1));
+
+      a = b;
+      b = qr[1];
+      x2 = x1;
+      x1 = x;
+      y2 = y1;
+      y1 = y;
+    }
+    return new BigInteger[]{a, x2, y2};
   }
 }

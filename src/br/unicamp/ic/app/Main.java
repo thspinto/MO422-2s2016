@@ -21,7 +21,10 @@ public class Main {
     }
 
     //Generate diffie-hellman keys
-    KeyPair egr = kpg.generateKeyPair();
+
+
+    //TODO: Save/load key files
+    //TODO: Limit input size
     System.out.println("test");
   }
 

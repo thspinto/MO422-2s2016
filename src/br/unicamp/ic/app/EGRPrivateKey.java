@@ -7,9 +7,19 @@ import java.security.PrivateKey;
 public class EGRPrivateKey implements PrivateKey, Serializable {
 
   /**
-   *  p and q are the two distinct primes p ≡ q ≡ 3 (mod 4)
+   * p and q are the two distinct primes p ≡ q ≡ 3 (mod 4)
    */
   private BigInteger p, q;
+
+  /**
+   * N is Rabin's public key (needed also in decryption)
+   */
+  private BigInteger n;
+
+  /**
+   * x and y are primes such that px + qy = gdc(a,b)
+   */
+  private BigInteger x, y;
 
   /**
    * a is any integer in [1, r-2]
@@ -77,6 +87,30 @@ public class EGRPrivateKey implements PrivateKey, Serializable {
 
   public void setG(BigInteger g) {
     this.g = g;
+  }
+
+  public BigInteger getX() {
+    return x;
+  }
+
+  public void setX(BigInteger x) {
+    this.x = x;
+  }
+
+  public BigInteger getY() {
+    return y;
+  }
+
+  public void setY(BigInteger y) {
+    this.y = y;
+  }
+
+  public BigInteger getN() {
+    return n;
+  }
+
+  public void setN(BigInteger n) {
+    this.n = n;
   }
 }
 
