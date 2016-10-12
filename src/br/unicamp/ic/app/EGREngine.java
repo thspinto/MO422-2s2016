@@ -9,6 +9,8 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -17,7 +19,14 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.ShortBufferException;
 
-public class EGRCipher extends CipherSpi {
+/**
+ * I was going to use Java SDK's standard architecture for encryption, but Oracle mandates me to get
+ * a certificate for it (US encryption export policy).
+ *
+ * Error: "Caused by: java.lang.SecurityException: Cannot verify jar:file:/Users/thiago/workspace/RabinElgamal/build/classes/production/ElGamalRabin/!/"
+ */
+public class EGREngine extends CipherSpi {
+  boolean encrypt = true;
   private Key key;
   private SecureRandom random;
   private BigInteger dh;
@@ -33,7 +42,7 @@ public class EGRCipher extends CipherSpi {
   }
 
   protected int engineGetBlockSize() {
-    return 3007;
+    return 64;
   }
 
   protected int engineGetOutputSize(int i) {
@@ -48,7 +57,7 @@ public class EGRCipher extends CipherSpi {
     return null;
   }
 
-  protected void engineInit(int i, Key key, SecureRandom secureRandom) throws InvalidKeyException {
+  public void engineInit(int i, Key key, SecureRandom secureRandom) throws InvalidKeyException {
     if ((i == Cipher.DECRYPT_MODE)) {
       throw new InvalidParameterException("Decrypt must set Algorithm Parameters");
     }
@@ -59,20 +68,17 @@ public class EGRCipher extends CipherSpi {
     this.random = secureRandom;
   }
 
-  protected void engineInit(int i, Key key, AlgorithmParameterSpec algorithmParameterSpec, SecureRandom secureRandom) throws InvalidKeyException, InvalidAlgorithmParameterException {
-    if (!(key instanceof EGRPublicKey)) {
-      this.engineInit(i, key, secureRandom);
-    } else {
-      if (!(key instanceof EGRPrivateKey)) {
-        throw new InvalidKeyException("Decrypt requires private key");
-      }
-      if (!(algorithmParameterSpec instanceof EGRParameterSpec)) {
-        throw new InvalidParameterException("Invalid decrypt parameter");
-      }
-      this.algorithmParameterSpec = algorithmParameterSpec;
-      this.key = key;
-      this.random = secureRandom;
+  public void engineInit(int i, Key key, AlgorithmParameterSpec algorithmParameterSpec, SecureRandom secureRandom) throws InvalidKeyException, InvalidAlgorithmParameterException {
+    if (!(key instanceof EGRPrivateKey)) {
+      throw new InvalidKeyException("Decrypt requires private key");
     }
+    if (!(algorithmParameterSpec instanceof EGRParameterSpec)) {
+      throw new InvalidParameterException("Invalid decrypt parameter");
+    }
+    this.encrypt = false;
+    this.algorithmParameterSpec = algorithmParameterSpec;
+    this.key = key;
+    this.random = secureRandom;
   }
 
   protected void engineInit(int i, Key key, AlgorithmParameters algorithmParameters, SecureRandom secureRandom) throws InvalidKeyException, InvalidAlgorithmParameterException {
@@ -80,14 +86,14 @@ public class EGRCipher extends CipherSpi {
   }
 
   protected byte[] engineUpdate(byte[] bytes, int i, int i1) {
-    return engineDoFinal(bytes, i, i1);
+    return new byte[0];
   }
 
   protected int engineUpdate(byte[] bytes, int i, int i1, byte[] bytes1, int i2) throws ShortBufferException {
     return 0;
   }
 
-  protected byte[] engineDoFinal(byte[] bytes, int i, int i1) {
+  protected byte[] engineDoFinal(byte[] bytes, int i, int i1) throws IllegalBlockSizeException, BadPaddingException {
     return new byte[0];
   }
 
@@ -95,7 +101,14 @@ public class EGRCipher extends CipherSpi {
     return 0;
   }
 
-  private byte[] encrypt(byte[] bytes) {
+  private byte[] engineDoFinal(byte[] bytes) {
+    if (encrypt) {
+      return encrypt(bytes);
+    }
+    return decrypt(bytes);
+  }
+
+  public byte[] encrypt(byte[] bytes) {
     EGRPublicKey publicKey = (EGRPublicKey) key;
     BigInteger b = new BigInteger(256, random);
     this.dh = publicKey.getG().modPow(b, publicKey.getR());
@@ -106,7 +119,7 @@ public class EGRCipher extends CipherSpi {
     //keep only 64 bit of k
     k = k.shiftRight(k.bitLength() - 64);
     //Concat k
-    m.shiftLeft(64).or(k);
+    m = m.shiftLeft(64).or(k);
 
     // Encrypt
     BigInteger c = m.modPow(BigInteger.valueOf(2), publicKey.getN());
@@ -114,31 +127,39 @@ public class EGRCipher extends CipherSpi {
     return c.toByteArray();
   }
 
-  private byte[] decrypt(byte[] bytes) {
+  public byte[] decrypt(byte[] bytes) {
     EGRPrivateKey privateKey = (EGRPrivateKey) key;
-    EGRParameterSpec parameterSpec = (EGRParameterSpec) algorithmParameterSpec;
-    //Getting shared key
-    BigInteger k = parameterSpec.getDh().modPow(privateKey.getA(), privateKey.getR());
     BigInteger c = new BigInteger(bytes);
     BigInteger p = privateKey.getP();
     BigInteger q = privateKey.getQ();
 
     //Get the quadratic residues
-    BigInteger m_p1 = c.modPow(q.add(BigInteger.ONE).divide(FOUR), p);
-    BigInteger m_q1 = c.modPow(q.add(BigInteger.ONE).divide(FOUR), q);
-    BigInteger m_p2 = p.subtract(m_p1);
-    BigInteger m_q2 = q.subtract(m_q1);
+    BigInteger r = c.modPow(p.add(BigInteger.ONE).divide(FOUR), p);
+    BigInteger s = c.modPow(q.add(BigInteger.ONE).divide(FOUR), q);
 
     BigInteger x = privateKey.getX();
     BigInteger y = privateKey.getY();
     BigInteger N = privateKey.getN();
 
-    BigInteger d1 = x.multiply(p).multiply(m_q1).add(y.multiply(q).multiply(m_p1)).mod(N);
-    BigInteger d2 = x.multiply(p).multiply(m_q2).add(y.multiply(q).multiply(m_p1)).mod(N);
-    BigInteger d3 = x.multiply(p).multiply(m_q1).add(y.multiply(q).multiply(m_p2)).mod(N);
-    BigInteger d4 = x.multiply(p).multiply(m_q2).add(y.multiply(q).multiply(m_p2)).mod(N);
+    BigInteger xps = x.multiply(p).mod(N).multiply(s).mod(N);
+    BigInteger yqr = y.multiply(q).mod(N).multiply(r).mod(N);
+
+    BigInteger m1 = xps.add(yqr).mod(N);
+    BigInteger m2 = xps.subtract(yqr).mod(N);
+
+    List<BigInteger> dArray = Arrays.asList(m1, m1.negate().mod(N), m2, m2.negate().mod(N));
 
     //Find the correct message using the shared key
+    EGRParameterSpec parameterSpec = (EGRParameterSpec) algorithmParameterSpec;
+    //Getting shared key
+    BigInteger k = parameterSpec.getDh().modPow(privateKey.getA(), privateKey.getR());
+    k = k.shiftRight(k.bitLength() - 64);
+
+    for (BigInteger d : dArray) {
+      if (d.xor(k).setBit(64).getLowestSetBit() == 64) {
+        return d.shiftRight(64).toByteArray();
+      }
+    }
 
     return null;
   }

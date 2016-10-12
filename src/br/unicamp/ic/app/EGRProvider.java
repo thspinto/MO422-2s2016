@@ -10,6 +10,7 @@ public class EGRProvider extends Provider {
    */
   protected EGRProvider() {
     super(Properties.name, Properties.version, "ElGamal Rabin Security Provider v0");
+    put("Cipher.EGR", "br.unicamp.ic.app.EGREngine");
     put("KeyPairGenerator.EGR", "br.unicamp.ic.app.EGRKeyPairGenerator");
   }
 }
