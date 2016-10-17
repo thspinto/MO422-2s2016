@@ -21,7 +21,7 @@ import javax.crypto.ShortBufferException;
 
 /**
  * I was going to use Java SDK's standard architecture for encryption, but Oracle mandates me to get
- * a certificate for it (US encryption export policy).
+ * a certificate for it.
  *
  * Error: "Caused by: java.lang.SecurityException: Cannot verify jar:file:/Users/thiago/workspace/RabinElgamal/build/classes/production/ElGamalRabin/!/"
  */

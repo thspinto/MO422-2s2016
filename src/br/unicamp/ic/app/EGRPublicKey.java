@@ -68,4 +68,5 @@ public class EGRPublicKey implements PublicKey, Serializable {
   public void setGamma(BigInteger gamma) {
     this.gamma = gamma;
   }
+
 }
