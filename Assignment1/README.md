@@ -1,4 +1,4 @@
-# ElGamalRabin Crypto System
+# ElGamalRabin Cryptosystem
 
 ## Build
 
