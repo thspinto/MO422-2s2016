@@ -63,6 +63,10 @@ public class Main {
     String input = readInput();
     Gson gson = new Gson();
     if (ModeEnum.ENCRYPT.equals(mode)) {
+      if (input.getBytes().length > 376) {
+        System.err.println("Message size must be less then 376 bytes");
+        exit(0);
+      }
       EGRPublicKey publicKey = readKey(keysDir + Properties.publicKeyFileName, EGRPublicKey.class);
       c.engineInit(Cipher.ENCRYPT_MODE, publicKey, new SecureRandom());
       EGRCipher cipher = new EGRCipher();
@@ -79,8 +83,6 @@ public class Main {
       System.out.println(new String(c.decrypt(cipher.getC().toByteArray())));
     }
     exit(0);
-
-    //TODO: Limit input size
   }
 
   private static String readInput() throws IOException {
@@ -130,9 +132,11 @@ public class Main {
 
     System.out.println("Examples:\n"
 
-        + " java -jar EGamalRabin.jar -kd ~/.key_dir -m E < messaget.txt \n"
+        + "java -jar ElGamalRabin.jar -kdir key_dir -m G \n"
 
-        + "java -jar EGamalRabin.jar -kd ~/.key_dir -m D < cipher.txt");
+        + "java -jar EGamalRabin.jar -kdir key_dir -m E < message.txt \n"
+
+        + "java -jar EGamalRabin.jar -kdir key_dir -m D < cipher.txt");
   }
 
   private static BigInteger[] encrypt(BigInteger m, KeyPair keyPair) {
