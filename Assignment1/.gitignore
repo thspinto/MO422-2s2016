@@ -1,4 +1,4 @@
-*.iml
+.idea/modules/ElGamalRabin_main.iml
 .gradle
 /.idea/*
 build/*
