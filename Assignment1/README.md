@@ -6,7 +6,7 @@
 ./gradlew jar
 ```
 
-The jar file will be built on ```build/libs/ElGamalRabin-1.0-SNAPSHOT.jar``` 
+The jar file will be built on ```build/libs/ElGamalRabin.jar``` 
 
 ## Usage
 
