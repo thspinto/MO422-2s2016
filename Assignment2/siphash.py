@@ -1,77 +1,104 @@
 #!/usr/bin/env python
-
-if __name__ == "__main__":
-    # execute only if run as a script
-    main()
+from struct import pack, unpack
 
 def sipHash(msg,key,c=2,d=4,h=8):
     k0 = key & 0xffffffffffffffff
     k1 = key >> 64
+    #Did't find this specified in the article, but keeping it for compatibility
+    #with reference implementation
+    x = { 8: (0x00,0xff,0x00), 16: (0xee,0xee,0xdd) }[h]
 
     #Initialization
+    global v0
+    global v1
+    global v2
+    global v3
     v0 = k0 ^ 0x736f6d6570736575
     v1 = k1 ^ 0x646f72616e646f6d
     v2 = k0 ^ 0x6c7967656e657261
     v3 = k1 ^ 0x7465646279746573
+    v1 ^= x[0]
 
-    #Compression m[0] to m[w-2]
-    l = len(message)
-    for s in xrange(0, l - 7, 8):
-        m = parse(msg[s:])
-        v3 ^= m
-
-        for i in xrange(c):
-            sipRound()
-
-        v0 ^= m
-
-    #Compression m[w-1]
-    n = (l//8)*8
-    m = (l % 256) << 56
-    for i in xrange(l-n):
-        m |= ord(msg[n+i]) << 8*i
-
-    v3 ^= m
-
-    for i in xrange(c):
-        sipRound()
-
-    v0 ^= m
+    #Compression
+    m = parse(msg)
+    map(mapOperation(c), m)
 
     #Finalization
-    v2 ^= 0xff
+    v2 ^= x[1]
     for i in xrange(d):
         sipRound()
+    tag = pack('<Q', v0 ^ v1 ^ v2 ^ v3)
 
-    return pack('<Q', (v0 ^ v1 ^ v2 ^ v3))
+    if h == 16:
+        v1 ^= x[2]
+        for i in xrange(d):
+            sipRound()
+        tag += pack('<Q', v0 ^ v1 ^ v2 ^ v3)
+
+    return tag
+
+def mapOperation(c):
+    def compress(msg):
+        global v3
+        global v0
+        v3 ^= msg
+        for j in xrange(c):
+            sipRound()
+        v0 ^= msg
+
+    return compress
 
 def sipRound():
+        mask64bit = 0xffffffffffffffff
+        global v0
+        global v1
+        global v2
+        global v3
         v0 += v1
+        v0 &= mask64bit
         v1 = rotl(v1,13)
         v1 ^= v0
         v0 = rotl(v0,32)
         v2 += v3
+        v2 &= mask64bit
         v3 = rotl(v3,16)
         v3 ^= v2
         v0 += v3
+        v0 &= mask64bit
         v3 = rotl(v3,21)
         v3 ^= v0
         v2 += v1
+        v2 &= mask64bit
         v1 = rotl(v1,17)
         v1 ^= v2
         v2 = rotl(v2,32)
 
 def rotl(v,n):
-    return (v << n) | (v >> (64 - n))
+    return (v << n) & 0xffffffffffffffff | (v >> (64 - n))
 
 ##
 # Parses the message to 64bit little-endian word
 ##
-def parse(msg):
-    return (ord(msg) | (ord(msg[1]) << 8)  \
-    | (ord(msg[2]) << 16) | (ord(msg[3]) << 24) \
-    | (ord(msg[4]) << 32) | (ord(msg[5]) << 40) \
-    | (ord(msg[6]) << 48) | (ord(msg[7]) << 56))
+def parse(m):
+    l = len(m)
+    n = (l//8)*8
+    msg = []
+
+    msg_map = map(lambda (i, el): ord(el) << 8*(i%8), enumerate(m))
+    # parse m_0 to m_{l-2}
+    for i in xrange(0, n, 8):
+        s = (msg_map[i] | msg_map[i+1] | msg_map[i+2] | msg_map[i+3] \
+        | msg_map[i+4] | msg_map[i+5] | msg_map[i+6] | msg_map[i+7])
+        msg.append(s)
+
+    s = (l % 256) << 56
+    # parse m_{l-1}
+    for i in xrange(l-n):
+        s |= msg_map[n+i]
+    msg.append(s)
+
+    return msg
+
 
 
 """
@@ -89,7 +116,6 @@ def parse(msg):
      in = 00 01 02 ... 3e (63 bytes)
 """
 def main():
-
     vectors = {
         8: ['\x31\x0e\x0e\xdd\x47\xdb\x6f\x72',
             '\xfd\x67\xdc\x93\xc5\x39\xf8\x74',
@@ -222,9 +248,14 @@ def main():
             '\x51\x50\xd1\x77\x2f\x50\x83\x4a\x50\x3e\x06\x9a\x97\x3f\xbd\x7c']}
 
     for h in [8,16]:
-        k = '\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f'
+        k = 0x0f0e0d0c0b0a09080706050403020100
         m = ''
         for i in xrange(12):
             assert sipHash(m,k, h=h) == vectors[h][i]
             m += chr(i)
         print("SipHash-2-4 {} bits: All tests passed.".format(h*8))
+
+
+if __name__ == "__main__":
+    # execute only if run as a script
+    main()
